@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Bigkas Admin",
   description: "Bigkas Admin Website",
+  icons: {
+    icon: '/logo.web.png',
+  },
 };
 
 export default function RootLayout({
