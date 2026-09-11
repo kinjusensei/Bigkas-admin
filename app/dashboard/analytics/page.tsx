@@ -74,26 +74,24 @@ export default function AnalyticsPage() {
   return (
     <>
       {/* Metric cards — from lesson_progress */}
-      <div className="metrics-grid">
-        {[
-          { label:'Total Progress Records', value: progressStats.total,     icon:'📋', bg:'#EEF2FF', cl:'#4F46E5' },
-          { label:'Completed',              value: progressStats.completed,  icon:'✅', bg:'#D1FAE5', cl:'#10B981' },
-          { label:'Still Learning',         value: progressStats.learning,   icon:'📖', bg:'#FEF3C7', cl:'#F59E0B' },
-          { label:'Due for Review',         value: progressStats.due,        icon:'⏰', bg:'#FEE2E2', cl:'#EF4444' },
-        ].map((m, i) => (
-          <div key={i} className="metric-card">
-            <div className="metric-icon" style={{ background:m.bg, color:m.cl }}>{m.icon}</div>
-            <div className="metric-label">{m.label}</div>
-            <div className="metric-value">{m.value.toLocaleString()}</div>
-          </div>
-        ))}
-      </div>
-
+<div className="metrics-grid">
+  {[
+    { label: 'Total Progress Records', value: progressStats.total },
+    { label: 'Completed', value: progressStats.completed },
+    { label: 'Still Learning', value: progressStats.learning },
+    { label: 'Due for Review', value: progressStats.due },
+  ].map((m, i) => (
+    <div key={i} className="metric-card">
+      <div className="metric-label">{m.label}</div>
+      <div className="metric-value">{m.value.toLocaleString()}</div>
+    </div>
+  ))}
+</div>
       <div className="grid-2">
         {/* Learners by Dialect — from profiles.active_dialect */}
         <div className="card">
           <div className="card-header">
-            <div className="card-title">🗣 Learners by Dialect</div>
+            <div className="card-title"> Learners by Dialect</div>
             <span style={{ fontSize:11, color:'#9CA3AF' }}>from profiles table</span>
           </div>
 
@@ -140,7 +138,7 @@ export default function AnalyticsPage() {
         {/* Score Distribution */}
         <div className="card">
           <div className="card-header">
-            <div className="card-title">📉 Score Distribution</div>
+            <div className="card-title"> Score Distribution</div>
           </div>
           <div className="bar-chart">
             {scoreData.map((v, i) => (
@@ -167,14 +165,14 @@ export default function AnalyticsPage() {
       {/* Lesson Progress Breakdown */}
       <div className="card">
         <div className="card-header">
-          <div className="card-title">📖 Lesson Progress Breakdown</div>
+          <div className="card-title">Lesson Progress Breakdown</div>
           <span style={{ fontSize:11, color:'#9CA3AF' }}>from lesson_progress table</span>
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16 }}>
           {[
-            { label:'Completed',     value:progressStats.completed, color:'#10B981', bg:'#D1FAE5', icon:'✅' },
-            { label:'Still Learning',value:progressStats.learning,  color:'#F59E0B', bg:'#FEF3C7', icon:'📖' },
-            { label:'Due for Review',value:progressStats.due,       color:'#EF4444', bg:'#FEE2E2', icon:'⏰' },
+            { label:'Completed',     value:progressStats.completed, color:'#10B981', bg:'#D1FAE5', icon:'' },
+            { label:'Still Learning',value:progressStats.learning,  color:'#F59E0B', bg:'#FEF3C7', icon:'' },
+            { label:'Due for Review',value:progressStats.due,       color:'#EF4444', bg:'#FEE2E2', icon:'' },
           ].map((s, i) => {
             const pct = progressStats.total > 0
               ? Math.round((s.value / progressStats.total) * 100)
@@ -197,7 +195,7 @@ export default function AnalyticsPage() {
       {/* Heatmap */}
       <div className="card">
         <div className="card-header">
-          <div className="card-title">🔲 Learner Activity Heatmap</div>
+          <div className="card-title"> Learner Activity Heatmap</div>
           <span style={{ fontSize:12, color:'#9CA3AF' }}>Simulated activity grid</span>
         </div>
         <div className="heatmap">
@@ -220,7 +218,7 @@ export default function AnalyticsPage() {
       {/* Top Performers — from profiles ordered by XP */}
       <div className="card">
         <div className="card-header">
-          <div className="card-title">🏆 Top Learners by XP</div>
+          <div className="card-title"> Top Learners by XP</div>
           <span style={{ fontSize:11, color:'#9CA3AF' }}>from profiles table</span>
         </div>
         <div className="tbl-wrap">

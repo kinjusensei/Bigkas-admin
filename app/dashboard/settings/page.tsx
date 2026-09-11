@@ -1,10 +1,11 @@
+
 'use client'
 export default function SettingsPage() {
   return (
     <>
       <div className="grid-2">
         <div className="card">
-          <div className="card-header"><div className="card-title">🗄 Supabase Connection</div></div>
+          <div className="card-header"><div className="card-title">Supabase Connection</div></div>
           {[['Project URL','https://xxxx.supabase.co','url'],['Anon Key','eyJhbGci...','password'],['Service Role Key','eyJhbGci...','password']].map(([l,p,t],i)=>(
             <div key={i} className="field">
               <label>{String(l)}</label>
@@ -12,23 +13,23 @@ export default function SettingsPage() {
             </div>
           ))}
           <div style={{display:'flex',gap:8,marginTop:6}}>
-            <button className="btn primary">💾 Save</button>
-            <button className="btn" onClick={()=>alert('Supabase connected in 42ms ✓')}>🔌 Test Connection</button>
+            <button className="btn primary">Save</button>
+            <button className="btn" onClick={()=>alert('Supabase connected in 42ms ✓')}> Test Connection</button>
           </div>
         </div>
         <div className="card">
-          <div className="card-header"><div className="card-title">⚙️ Module Settings</div></div>
+          <div className="card-header"><div className="card-title">Module Settings</div></div>
           {[['Enable real-time monitoring',true],['Email digest reports',true],['Require lesson order',false],['Allow quiz retakes',true],['Track video progress',true],['Maintenance mode',false]].map(([l,d],i)=>(
             <label key={i} className="toggle">
               <input type="checkbox" defaultChecked={Boolean(d)} style={{appearance:'none',width:36,height:20,background:d?'#4F46E5':'#D1D5DB',borderRadius:10,cursor:'pointer',position:'relative',transition:'background .2s',flexShrink:0}}/>
               {String(l)}
             </label>
           ))}
-          <button className="btn primary" style={{marginTop:8}}>💾 Save Settings</button>
+          <button className="btn primary" style={{marginTop:8}}>Save Settings</button>
         </div>
       </div>
       <div className="card">
-        <div className="card-header"><div className="card-title">🔧 Environment Status</div></div>
+        <div className="card-header"><div className="card-title">Environment Status</div></div>
         <div className="tbl-wrap">
           <table className="tbl">
             <thead><tr><th>Key</th><th>Value</th><th>Status</th></tr></thead>

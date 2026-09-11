@@ -106,20 +106,19 @@ export default function ActivityPage() {
   return (
     <>
       {/* Metrics */}
-      <div className="metrics-grid">
-        {[
-          { label: 'Total Logs',      value: stats.total,        icon: '📋' },
-          { label: 'Today',           value: stats.today,        icon: '📅' },
-          { label: 'Unique Users',    value: stats.uniqueUsers,  icon: '👥' },
-          { label: 'Action Types',    value: stats.uniqueActions,icon: '⚡' },
-        ].map((m, i) => (
-          <div key={i} className="metric-card">
-            <div className="metric-icon" style={{ background:'#EEF2FF', color:'#4F46E5', fontSize:18 }}>{m.icon}</div>
-            <div className="metric-label">{m.label}</div>
-            <div className="metric-value">{m.value}</div>
-          </div>
-        ))}
-      </div>
+<div className="metrics-grid">
+  {[
+    { label: 'Total Logs', value: stats.total },
+    { label: 'Today', value: stats.today },
+    { label: 'Unique Users', value: stats.uniqueUsers },
+    { label: 'Action Types', value: stats.uniqueActions },
+  ].map((m, i) => (
+    <div key={i} className="metric-card">
+      <div className="metric-label">{m.label}</div>
+      <div className="metric-value">{m.value}</div>
+    </div>
+  ))}
+</div>
 
       {/* Table card */}
       <div className="card">
@@ -153,7 +152,7 @@ export default function ActivityPage() {
               onClick={fetchLogs}
               title="Refresh"
             >
-              🔄
+              Refresh
             </button>
             {/* Export CSV */}
             <button
@@ -175,7 +174,7 @@ export default function ActivityPage() {
                 a.href = url; a.download = 'activity_logs.csv'; a.click()
               }}
             >
-              ↓ CSV
+              CSV
             </button>
           </div>
         </div>

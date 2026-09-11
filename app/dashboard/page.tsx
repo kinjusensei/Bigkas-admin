@@ -85,10 +85,10 @@ export default function DashboardPage() {
       {/* Metrics */}
       <div className="metrics-grid">
         {[
-          { icon: '👥', bg: '#EEF2FF', cl: '#4F46E5', label: 'Total Learners',      value: stats.totalUsers.toLocaleString() },
-          { icon: '⚡', bg: '#D1FAE5', cl: '#10B981', label: 'Activity Logs Today', value: stats.activeToday.toLocaleString() },
-          { icon: '📚', bg: '#FEF3C7', cl: '#F59E0B', label: 'Lessons Completed',   value: stats.lessonsCompleted.toLocaleString() },
-          { icon: '🏆', bg: '#DBEAFE', cl: '#3B82F6', label: 'Avg. User Level',     value: `Lvl ${stats.avgLevel}` },
+          { icon: '', bg: '#EEF2FF', cl: '#4F46E5', label: 'Total Learners',      value: stats.totalUsers.toLocaleString() },
+          { icon: '', bg: '#D1FAE5', cl: '#10B981', label: 'Activity Logs Today', value: stats.activeToday.toLocaleString() },
+          { icon: '', bg: '#FEF3C7', cl: '#F59E0B', label: 'Lessons Completed',   value: stats.lessonsCompleted.toLocaleString() },
+          { icon: '', bg: '#DBEAFE', cl: '#3B82F6', label: 'Avg. User Level',     value: `Lvl ${stats.avgLevel}` },
         ].map((m, i) => (
           <div key={i} className="metric-card">
             <div className="metric-icon" style={{ background: m.bg, color: m.cl }}>{m.icon}</div>
@@ -126,7 +126,7 @@ export default function DashboardPage() {
         {/* Top Users by XP from profiles */}
         <div className="card">
           <div className="card-header">
-            <div className="card-title">🏆 Top Learners by XP</div>
+            <div className="card-title"> Top Learners by XP</div>
             <a href="/dashboard/users" className="btn sm">View all</a>
           </div>
           {topUsers.length === 0 && (
@@ -163,7 +163,7 @@ export default function DashboardPage() {
       {/* Supabase tables overview */}
       <div className="grid-3">
         <div className="card">
-          <div className="card-header"><div className="card-title">👤 Profiles Table</div></div>
+          <div className="card-header"><div className="card-title"> Profiles Table</div></div>
           {[
             ['id', 'uuid', true],
             ['display_name', 'text', false],
@@ -183,7 +183,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="card">
-          <div className="card-header"><div className="card-title">📋 Activity Logs Table</div></div>
+          <div className="card-header"><div className="card-title"> Activity Logs Table</div></div>
           {[
             ['id', 'uuid', true],
             ['user_id', 'uuid', false],
@@ -203,7 +203,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="card">
-          <div className="card-header"><div className="card-title">📖 Lesson Progress Table</div></div>
+          <div className="card-header"><div className="card-title"> Lesson Progress Table</div></div>
           {[
             ['id', 'uuid', true],
             ['user_id', 'uuid', false],
