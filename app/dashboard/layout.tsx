@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
+import ReportsCountBadge from '@/components/admin/ReportsCountBadge'
 
 const nav = [
   { section: 'Overview' },
@@ -33,6 +34,20 @@ const nav = [
     label: 'Learning Analytics',
   },
 
+  { section: 'Support' },
+  {
+    href: '/dashboard/announcements',
+    icon: '/email.png',
+    label: 'Announcements',
+  },
+  {
+    href: '/dashboard/reports',
+    icon: '/danger.png',
+    label: 'Bug reports',
+    // Renders its own sb-badge span, and nothing when the count is 0.
+    badgeNode: <ReportsCountBadge />,
+  },
+
   { section: 'System' },
   {
     href: '/dashboard/settings',
@@ -51,6 +66,7 @@ export default function DashboardLayout({
 
   const [userName, setUserName] = useState('Admin')
   const [avatarUrl, setAvatarUrl] = useState('')
+  const [checkingAuth, setCheckingAuth] = useState(true)
 
   useEffect(() => {
     async function getUserProfile() {
@@ -58,18 +74,15 @@ export default function DashboardLayout({
 
       const {
         data: { user },
-        error: userError,
       } = await supabase.auth.getUser()
 
-      if (userError) {
-        console.error('Error getting user:', userError)
+      // Signed out (getUser reports that as an AuthSessionMissingError).
+      if (!user) {
+        router.replace('/login')
         return
       }
 
-      if (!user) {
-        console.error('No logged-in user found')
-        return
-      }
+      setCheckingAuth(false)
 
       const { data: profile, error: profileError } =
         await supabase
@@ -98,7 +111,7 @@ export default function DashboardLayout({
     }
 
     getUserProfile()
-  }, [])
+  }, [router])
 
   async function logout() {
     const supabase = createClient()
@@ -108,14 +121,37 @@ export default function DashboardLayout({
     router.push('/login')
   }
 
+  // Longest matching href wins, so /dashboard/reports/<id> shows "Bug reports".
   const title =
-    nav.find(
-      (i) => 'href' in i && i.href === pathname
-    )?.label ?? 'Dashboard'
+    nav
+      .filter(
+        (i) =>
+          'href' in i &&
+          (pathname === i.href || pathname.startsWith(`${i.href}/`))
+      )
+      .sort((a, b) => (b.href?.length ?? 0) - (a.href?.length ?? 0))[0]
+      ?.label ?? 'Dashboard'
 
   const initials = userName
     .substring(0, 2)
     .toUpperCase()
+
+  if (checkingAuth) {
+    return (
+      <div
+        style={{
+          height: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 13,
+          color: '#9CA3AF',
+        }}
+      >
+        Loading…
+      </div>
+    )
+  }
 
   return (
     <div className="shell">
@@ -215,6 +251,8 @@ export default function DashboardLayout({
                     {item.badge}
                   </span>
                 )}
+
+                {item.badgeNode}
 
               </Link>
             )
