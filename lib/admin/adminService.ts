@@ -1,7 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { ACTIVE_STATUSES } from "./reportStatus";
 
-
 // Matches what the mobile app's services/reportService.ts writes.
 export type BugReport = {
   id: string;
@@ -11,6 +10,7 @@ export type BugReport = {
   description: string | null;
   screenshot_path: string | null;
   status: string;
+  needs_admin_reply: boolean;
   created_at: string;
 };
 
@@ -21,8 +21,9 @@ export type Announcement = {
   created_at: string;
 };
 
-export type ReportReply = {
+export type ReportMessage = {
   id: string;
+  sender_role: "user" | "admin";
   body: string;
   created_at: string;
 };
@@ -76,13 +77,22 @@ export async function deleteAnnouncement(id: string): Promise<void> {
 
 // --- Bug reports -------------------------------------------------------------
 
-export async function getBugReports(status?: string): Promise<BugReport[]> {
+// needs_admin_reply comes from sql/fix_reply_functions.sql in the mobile repo.
+const REPORT_COLUMNS =
+  "id, user_id, category, title, description, screenshot_path, status, needs_admin_reply, created_at";
+
+/** Reports waiting on an admin come first. Pass `needsReply` to show only those. */
+export async function getBugReports(
+  filter: { status?: string; needsReply?: boolean } = {}
+): Promise<BugReport[]> {
   let query = supabase
     .from("bug_reports")
-    .select("id, user_id, category, title, description, screenshot_path, status, created_at")
+    .select(REPORT_COLUMNS)
+    .order("needs_admin_reply", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(300);
-  if (status) query = query.eq("status", status);
+  if (filter.status) query = query.eq("status", filter.status);
+  if (filter.needsReply) query = query.eq("needs_admin_reply", true);
 
   const { data, error } = await query;
   if (error) throw error;
@@ -101,30 +111,54 @@ export async function getActiveReportCount(): Promise<number> {
 export async function getBugReport(id: string): Promise<BugReport | null> {
   const { data, error } = await supabase
     .from("bug_reports")
-    .select("id, user_id, category, title, description, screenshot_path, status, created_at")
+    .select(REPORT_COLUMNS)
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
   return data as BugReport | null;
 }
 
+export type ReportReceipts = {
+  admin_seen_at: string | null;
+  user_seen_at: string | null;
+};
+
+// Read receipts come from sql/report_seen.sql in the mobile repo. Kept out of
+// REPORT_COLUMNS so the rest of the site still works before that script is run.
+export async function getReportReceipts(id: string): Promise<ReportReceipts> {
+  const { data, error } = await supabase
+    .from("bug_reports")
+    .select("admin_seen_at, user_seen_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return { admin_seen_at: null, user_seen_at: null };
+  return data as ReportReceipts;
+}
+
+/** Tells the reporter an admin has looked. The first call also sends them a notification. */
+export async function markReportSeen(id: string): Promise<void> {
+  const { error } = await supabase.rpc("mark_bug_report_seen_by_admin", {
+    p_report_id: id,
+  });
+  if (error) throw error;
+}
+
 /** The bucket is private, so screenshots are shown through a 1-hour signed URL. */
 export async function getScreenshotUrl(path: string): Promise<string | null> {
-  const { data, error } = await supabase.storage
-    .from("bug-reports")
-    .createSignedUrl(path, 60 * 60);
+  const { data, error } = await supabase.storage.from("bug-reports").createSignedUrl(path, 60 * 60);
   if (error) return null;
   return data.signedUrl;
 }
 
-export async function getReportReplies(reportId: string): Promise<ReportReply[]> {
+/** Every message on a report — admin replies and the user's follow-ups — oldest first. */
+export async function getReportMessages(reportId: string): Promise<ReportMessage[]> {
   const { data, error } = await supabase
-    .from("notifications")
-    .select("id, body, created_at")
+    .from("bug_report_messages")
+    .select("id, sender_role, body, created_at")
     .eq("report_id", reportId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []) as ReportReply[];
+  return (data ?? []) as ReportMessage[];
 }
 
 /** Notifies the reporter; pass `status` to change the report's status in the same step. */
@@ -146,4 +180,30 @@ export async function replyToReport(
 export async function updateReportStatus(reportId: string, status: string): Promise<void> {
   const { error } = await supabase.from("bug_reports").update({ status }).eq("id", reportId);
   if (error) throw error;
+}
+
+// --- Activity ----------------------------------------------------------------
+
+export type ActivityEvent = {
+  id: string;
+  user_id: string | null;
+  user_name: string;
+  user_email: string | null;
+  action: string;
+  description: string;
+  created_at: string;
+};
+
+/**
+ * Every user's activity, newest first. Comes from admin_activity_feed() in
+ * sql/admin_activity_feed.sql, which reads all users' rows (RLS
+ * would otherwise limit the admin to their own). Pass `before` to page back.
+ */
+export async function getActivityFeed(limit = 200, before?: string): Promise<ActivityEvent[]> {
+  const { data, error } = await supabase.rpc("admin_activity_feed", {
+    p_limit: limit,
+    p_before: before ?? null,
+  });
+  if (error) throw error;
+  return (data ?? []) as ActivityEvent[];
 }

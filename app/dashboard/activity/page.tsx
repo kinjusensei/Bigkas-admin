@@ -1,80 +1,116 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { ActivityEvent, errorMessage, getActivityFeed } from '@/lib/admin/adminService'
 
-type Log = {
-  id: string
-  user_id: string
-  user_email: string
-  user_name: string
-  action: string
-  description: string
-  created_at: string
-}
+type Log = ActivityEvent
+
+const PAGE_SIZE = 200
 
 const actionPill: Record<string, string> = {
   lesson_complete : 'pill-green',
+  pretest         : 'pill-amber',
   quiz_submit     : 'pill-amber',
   login           : 'pill-blue',
   register        : 'pill-purple',
+  bug_report      : 'pill-red',
+  report_reply    : 'pill-red',
   review          : 'pill-gray',
   logout          : 'pill-gray',
 }
 
 const actionDot: Record<string, string> = {
   lesson_complete : '#10B981',
+  pretest         : '#F59E0B',
   quiz_submit     : '#F59E0B',
   login           : '#4F46E5',
   register        : '#8B5CF6',
+  bug_report      : '#EF4444',
+  report_reply    : '#EF4444',
   review          : '#0EA5E9',
   logout          : '#9CA3AF',
 }
 
+const actionLabel: Record<string, string> = {
+  lesson_complete : 'Practice',
+  pretest         : 'Pretest',
+  login           : 'Sign in',
+  register        : 'Sign up',
+  bug_report      : 'Bug report',
+  report_reply    : 'Report reply',
+}
+
+// The app writes to these tables, so a new row means there's new activity to show.
+const LIVE_TABLES = ['practice_history', 'pretest_progress', 'bug_reports', 'bug_report_messages', 'profiles', 'activity_logs']
+
 export default function ActivityPage() {
   const [logs, setLogs]             = useState<Log[]>([])
   const [loading, setLoading]       = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore]       = useState(false)
+  const [error, setError]           = useState<string | null>(null)
   const [search, setSearch]         = useState('')
   const [actionFilter, setAction]   = useState('All actions')
-  const [actions, setActions]       = useState<string[]>([])
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  async function fetchLogs() {
-    setLoading(true)
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('activity_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100)
-
-    if (error) {
-      console.error('Supabase error:', error.message)
-    } else {
-      setLogs(data || [])
-      // Build unique action list for filter dropdown
-      const unique = [...new Set((data || []).map((l: Log) => l.action).filter(Boolean))]
-      setActions(unique)
+  const fetchLogs = useCallback(async () => {
+    try {
+      const data = await getActivityFeed(PAGE_SIZE)
+      setLogs(data)
+      setHasMore(data.length === PAGE_SIZE)
+      setError(null)
+    } catch (e) {
+      setError(errorMessage(e, "Couldn't load activity."))
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
+  }, [])
+
+  async function loadMore() {
+    const oldest = logs[logs.length - 1]
+    if (!oldest) return
+    setLoadingMore(true)
+    try {
+      const data = await getActivityFeed(PAGE_SIZE, oldest.created_at)
+      setLogs(prev => {
+        const seen = new Set(prev.map(l => l.id))
+        return [...prev, ...data.filter(l => !seen.has(l.id))]
+      })
+      setHasMore(data.length === PAGE_SIZE)
+    } catch (e) {
+      setError(errorMessage(e, "Couldn't load older activity."))
+    } finally {
+      setLoadingMore(false)
+    }
   }
 
   useEffect(() => {
     fetchLogs()
 
-    // Live updates via Supabase Realtime
-    const supabase = createClient()
-    const channel = supabase
-      .channel('activity_logs_changes')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'activity_logs' },
-        (payload) => {
-          setLogs(prev => [payload.new as Log, ...prev])
-        }
-      )
-      .subscribe()
+    // Refetch shortly after any of the app's tables change, so bursts of
+    // activity cause one reload rather than one per row.
+    const scheduleRefresh = () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current)
+      refreshTimer.current = setTimeout(fetchLogs, 1500)
+    }
+    let channel = supabase.channel('admin_activity_feed')
+    for (const table of LIVE_TABLES) {
+      channel = channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table }, scheduleRefresh)
+    }
+    channel.subscribe()
 
-    return () => { supabase.removeChannel(channel) }
-  }, [])
+    // Realtime only delivers rows the admin's RLS allows, and sign-ins don't
+    // insert anything, so also poll as a fallback.
+    const poll = setInterval(fetchLogs, 60_000)
+
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(poll)
+      if (refreshTimer.current) clearTimeout(refreshTimer.current)
+    }
+  }, [fetchLogs])
+
+  const actions = [...new Set(logs.map(l => l.action).filter(Boolean))]
 
   const filtered = logs.filter(l => {
     const matchSearch = (
@@ -144,12 +180,12 @@ export default function ActivityPage() {
               style={{ border:'1px solid #E5E7EB', borderRadius:6, padding:'6px 10px', fontSize:13 }}
             >
               <option>All actions</option>
-              {actions.map(a => <option key={a}>{a}</option>)}
+              {actions.map(a => <option key={a} value={a}>{actionLabel[a] || a}</option>)}
             </select>
             {/* Refresh */}
             <button
               className="btn sm"
-              onClick={fetchLogs}
+              onClick={() => { setLoading(true); fetchLogs() }}
               title="Refresh"
             >
               Refresh
@@ -163,7 +199,7 @@ export default function ActivityPage() {
                   ...filtered.map(l => [
                     l.user_name   || '',
                     l.user_email  || '',
-                    l.action      || '',
+                    actionLabel[l.action] || l.action || '',
                     (l.description|| '').replace(/,/g,' '),
                     new Date(l.created_at).toLocaleString(),
                   ].join(','))
@@ -178,6 +214,14 @@ export default function ActivityPage() {
             </button>
           </div>
         </div>
+
+        {error && (
+          <div className="flash flash-error">
+            {error}
+            {/function .*admin_activity_feed|does not exist/i.test(error) &&
+              ' Run sql/admin_activity_feed.sql (in this admin repo) in the Supabase SQL editor.'}
+          </div>
+        )}
 
         {/* Loading spinner */}
         {loading ? (
@@ -202,7 +246,7 @@ export default function ActivityPage() {
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={6} style={{ textAlign:'center', color:'#9CA3AF', padding:40 }}>
-                      {logs.length === 0 ? 'No activity logs found in Supabase.' : 'No results match your search.'}
+                      {logs.length === 0 ? 'No activity yet.' : 'No results match your search.'}
                     </td>
                   </tr>
                 )}
@@ -222,7 +266,7 @@ export default function ActivityPage() {
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                         <div style={{ width:7, height:7, borderRadius:'50%', background: actionDot[log.action] || '#9CA3AF', flexShrink:0 }} />
                         <span className={`pill ${actionPill[log.action] || 'pill-gray'}`} style={{ fontSize:11 }}>
-                          {log.action || '—'}
+                          {actionLabel[log.action] || log.action || '—'}
                         </span>
                       </div>
                     </td>
@@ -238,6 +282,13 @@ export default function ActivityPage() {
                 ))}
               </tbody>
             </table>
+            {hasMore && !search && actionFilter === 'All actions' && (
+              <div style={{ display:'flex', justifyContent:'center', padding:16 }}>
+                <button className="btn sm" onClick={loadMore} disabled={loadingMore}>
+                  {loadingMore ? 'Loading…' : 'Load older activity'}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

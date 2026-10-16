@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
+import { getActivityFeed } from '@/lib/admin/adminService'
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
@@ -37,12 +38,11 @@ export default function DashboardPage() {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'completed')
 
-      // Recent activity logs
-      const { data: logs } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(6)
+      // Every user's activity (see sql/admin_activity_feed.sql).
+      // Enough rows to count today's activity on a busy day; the card shows the first 6.
+      const feed = await getActivityFeed(1000).catch(() => [])
+      const today = new Date().toDateString()
+      const activeToday = feed.filter(e => new Date(e.created_at).toDateString() === today).length
 
       // Top users by XP
       const { data: top } = await supabase
@@ -53,11 +53,11 @@ export default function DashboardPage() {
 
       setStats({
         totalUsers: totalUsers || 0,
-        activeToday: logs?.length || 0,
+        activeToday,
         lessonsCompleted: lessonsCompleted || 0,
         avgLevel,
       })
-      setRecentLogs(logs || [])
+      setRecentLogs(feed.slice(0, 6))
       setTopUsers(top || [])
       setLoading(false)
     }
@@ -66,6 +66,9 @@ export default function DashboardPage() {
 
   const actionColor: Record<string, string> = {
     lesson_complete: '#10B981',
+    pretest:         '#F59E0B',
+    bug_report:      '#EF4444',
+    report_reply:    '#EF4444',
     quiz_submit:     '#4F46E5',
     login:           '#0EA5E9',
     register:        '#F59E0B',
@@ -86,7 +89,7 @@ export default function DashboardPage() {
       <div className="metrics-grid">
         {[
           { icon: '', bg: '#EEF2FF', cl: '#4F46E5', label: 'Total Learners',      value: stats.totalUsers.toLocaleString() },
-          { icon: '', bg: '#D1FAE5', cl: '#10B981', label: 'Activity Logs Today', value: stats.activeToday.toLocaleString() },
+          { icon: '', bg: '#D1FAE5', cl: '#10B981', label: 'Activity Today', value: stats.activeToday.toLocaleString() },
           { icon: '', bg: '#FEF3C7', cl: '#F59E0B', label: 'Lessons Completed',   value: stats.lessonsCompleted.toLocaleString() },
           { icon: '', bg: '#DBEAFE', cl: '#3B82F6', label: 'Avg. User Level',     value: `Lvl ${stats.avgLevel}` },
         ].map((m, i) => (
@@ -106,7 +109,7 @@ export default function DashboardPage() {
             <a href="/dashboard/activity" className="btn sm">View all</a>
           </div>
           {recentLogs.length === 0 && (
-            <div style={{ color: '#9CA3AF', fontSize: 13, padding: '8px 0' }}>No activity logs yet.</div>
+            <div style={{ color: '#9CA3AF', fontSize: 13, padding: '8px 0' }}>No activity yet.</div>
           )}
           {recentLogs.map((log, i) => (
             <div key={i} className="activity-item">
