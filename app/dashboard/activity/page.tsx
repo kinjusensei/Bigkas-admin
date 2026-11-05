@@ -9,6 +9,8 @@ const PAGE_SIZE = 200
 
 const actionPill: Record<string, string> = {
   lesson_complete : 'pill-green',
+  lesson_finish   : 'pill-green',
+  lesson_start    : 'pill-blue',
   pretest         : 'pill-amber',
   quiz_submit     : 'pill-amber',
   login           : 'pill-blue',
@@ -21,6 +23,8 @@ const actionPill: Record<string, string> = {
 
 const actionDot: Record<string, string> = {
   lesson_complete : '#10B981',
+  lesson_finish   : '#10B981',
+  lesson_start    : '#0EA5E9',
   pretest         : '#F59E0B',
   quiz_submit     : '#F59E0B',
   login           : '#4F46E5',
@@ -33,6 +37,8 @@ const actionDot: Record<string, string> = {
 
 const actionLabel: Record<string, string> = {
   lesson_complete : 'Practice',
+  lesson_finish   : 'Lesson finished',
+  lesson_start    : 'Lesson started',
   pretest         : 'Pretest',
   login           : 'Sign in',
   register        : 'Sign up',
@@ -41,7 +47,7 @@ const actionLabel: Record<string, string> = {
 }
 
 // The app writes to these tables, so a new row means there's new activity to show.
-const LIVE_TABLES = ['practice_history', 'pretest_progress', 'bug_reports', 'bug_report_messages', 'profiles', 'activity_logs']
+const LIVE_TABLES = ['practice_history', 'pretest_progress', 'lesson_completions', 'bug_reports', 'bug_report_messages', 'profiles', 'activity_logs']
 
 export default function ActivityPage() {
   const [logs, setLogs]             = useState<Log[]>([])
@@ -130,13 +136,7 @@ export default function ActivityPage() {
   }
 
   function formatTime(ts: string) {
-    const d = new Date(ts)
-    const now = new Date()
-    const diff = Math.floor((now.getTime() - d.getTime()) / 1000)
-    if (diff < 60)   return `${diff}s ago`
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-    if (diff < 86400)return `${Math.floor(diff / 3600)}h ago`
-    return d.toLocaleDateString()
+    return new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
   }
 
   return (

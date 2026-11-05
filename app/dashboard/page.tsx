@@ -66,6 +66,8 @@ export default function DashboardPage() {
 
   const actionColor: Record<string, string> = {
     lesson_complete: '#10B981',
+    lesson_finish:   '#10B981',
+    lesson_start:    '#0EA5E9',
     pretest:         '#F59E0B',
     bug_report:      '#EF4444',
     report_reply:    '#EF4444',

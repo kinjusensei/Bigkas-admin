@@ -4,24 +4,32 @@
 -- Run AFTER the mobile repo's sql/notifications.sql (needs public.is_admin())
 -- and sql/report_messages.sql (needs bug_report_messages). Safe to re-run.
 --
+-- This file deliberately does not create or alter any source tables. The
+-- source table names and columns below must already exist in the shared
+-- Supabase project; if they do not, deployment should stop with a missing
+-- relation/column error rather than silently returning incomplete data.
+--
 -- Called by lib/admin/adminService.ts getActivityFeed(). Keyset pagination:
 -- the first page passes p_before = null; "Load older" passes the created_at
 -- of the oldest row on screen. The boundary is inclusive (<=) so events that
 -- share that exact timestamp aren't skipped; the page drops the repeats by id.
 --
--- Why: the app never writes to activity_logs, and each user can only read
--- their own rows in the progress tables. So the admin Activity page showed
--- almost nothing. This function builds the feed from what the app really
--- records, for all users, and only admins can call it.
+-- Why: each user can only read their own rows in the progress tables, so the
+-- admin Activity page showed almost nothing. This function builds the feed
+-- from what the app really records, for all users, and only admins can call it.
 --
 -- Sources:
 --   register     auth.users.created_at
 --   login        auth.users.last_sign_in_at (latest sign-in per user only)
 --   practice     practice_history (one row per finished practice)
 --   pretest      pretest_progress (latest attempt per lesson; it's an upsert)
+--   lesson_finish lesson_completions (latest attempt per structured lesson;
+--                also an upsert, so older attempts' times aren't kept)
 --   bug_report   bug_reports
 --   report_reply bug_report_messages sent by the user
---   (any)        activity_logs, if anything writes to it
+--   lesson_start activity_logs (written by the mobile app when a lesson opens;
+--                see the mobile repo's sql/activity_logs_lesson_start.sql)
+--   (any)        anything else in activity_logs
 -- ============================================================================
 
 create or replace function public.admin_activity_feed(
@@ -40,7 +48,8 @@ returns table (
 language plpgsql
 stable
 security definer
-set search_path = public
+-- Keep pg_catalog first and do not inherit the caller's search_path.
+set search_path = pg_catalog, public
 as $$
 begin
   if not public.is_admin() then
@@ -79,6 +88,19 @@ begin
     from public.pretest_progress pp
 
     union all
+    select 'lesson:' || lc.user_id::text || ':' || lc.lesson_id::text, lc.user_id, 'lesson_finish',
+           case when lc.status = 'surrendered' then 'Gave up on ' else 'Finished ' end
+             || initcap(replace(lc.lesson_id::text, '_', ' '))
+             || ' (best score ' || coalesce(lc.best_score, 0) || '%'
+             || case
+                  when lc.status = 'surrendered' then ')'
+                  when coalesce(lc.status = 'passed', lc.passed) then ', passed)'
+                  else ', not passed)'
+                end,
+           lc.updated_at::timestamptz
+    from public.lesson_completions lc
+
+    union all
     select 'bug_report:' || br.id::text, br.user_id, 'bug_report',
            'Reported a problem: ' || left(br.title, 80),
            br.created_at::timestamptz
@@ -112,3 +134,7 @@ $$;
 
 revoke all on function public.admin_activity_feed(int, timestamptz) from public, anon;
 grant execute on function public.admin_activity_feed(int, timestamptz) to authenticated;
+
+-- Make the new function visible to PostgREST immediately after execution in
+-- the SQL editor. This does not grant any additional access.
+notify pgrst, 'reload schema';
