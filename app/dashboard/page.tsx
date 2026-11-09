@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
+import { loadLearningStats } from '@/lib/admin/learningStats'
 import { getActivityFeed } from '@/lib/admin/adminService'
 
 export default function DashboardPage() {
@@ -32,11 +33,10 @@ export default function DashboardPage() {
         ? Math.round(levelData.reduce((a, b) => a + (b.level || 0), 0) / levelData.length)
         : 0
 
-      // Lessons completed
-      const { count: lessonsCompleted } = await supabase
-        .from('lesson_progress')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'completed')
+      // Lessons and story chapters passed (same rule as Learning Analytics).
+      const lessonsCompleted = await loadLearningStats()
+        .then((learning) => learning.completed)
+        .catch(() => 0)
 
       // Every user's activity (see sql/admin_activity_feed.sql).
       // Enough rows to count today's activity on a busy day; the card shows the first 6.
@@ -47,7 +47,7 @@ export default function DashboardPage() {
       // Top users by XP
       const { data: top } = await supabase
         .from('profiles')
-        .select('display_name, email, xp, level, role, region')
+        .select('*')
         .order('xp', { ascending: false })
         .limit(5)
 
