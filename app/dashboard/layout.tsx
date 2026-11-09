@@ -3,7 +3,11 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase'
+import {
+  clearExpiredLogin,
+  createClient,
+  isExpiredLoginError,
+} from '@/lib/supabase'
 import ReportsCountBadge from '@/components/admin/ReportsCountBadge'
 
 const nav = [
@@ -74,7 +78,15 @@ export default function DashboardLayout({
 
       const {
         data: { user },
+        error: userError,
       } = await supabase.auth.getUser()
+
+      // The saved login expired: clear it so the login page works again.
+      if (isExpiredLoginError(userError)) {
+        await clearExpiredLogin()
+        router.replace('/login')
+        return
+      }
 
       // Signed out (getUser reports that as an AuthSessionMissingError).
       if (!user) {
