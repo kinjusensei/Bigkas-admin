@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { Activity, CheckCircle2, TrendingUp, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { loadLearningStats } from '@/lib/admin/learningStats'
 import { getActivityFeed } from '@/lib/admin/adminService'
@@ -90,13 +91,15 @@ export default function DashboardPage() {
       {/* Metrics */}
       <div className="metrics-grid">
         {[
-          { icon: '', bg: '#EEF2FF', cl: '#4F46E5', label: 'Total Learners',      value: stats.totalUsers.toLocaleString() },
-          { icon: '', bg: '#D1FAE5', cl: '#10B981', label: 'Activity Today', value: stats.activeToday.toLocaleString() },
-          { icon: '', bg: '#FEF3C7', cl: '#F59E0B', label: 'Lessons Completed',   value: stats.lessonsCompleted.toLocaleString() },
-          { icon: '', bg: '#DBEAFE', cl: '#3B82F6', label: 'Avg. User Level',     value: `Lvl ${stats.avgLevel}` },
+          { Icon: Users,        bg: '#EEF2FF', cl: '#4F46E5', label: 'Total Learners',    value: stats.totalUsers.toLocaleString() },
+          { Icon: Activity,     bg: '#D1FAE5', cl: '#10B981', label: 'Activity Today',    value: stats.activeToday.toLocaleString() },
+          { Icon: CheckCircle2, bg: '#FEF3C7', cl: '#F59E0B', label: 'Lessons Completed', value: stats.lessonsCompleted.toLocaleString() },
+          { Icon: TrendingUp,   bg: '#DBEAFE', cl: '#3B82F6', label: 'Avg. User Level',   value: `Lvl ${stats.avgLevel}` },
         ].map((m, i) => (
           <div key={i} className="metric-card">
-            <div className="metric-icon" style={{ background: m.bg, color: m.cl }}>{m.icon}</div>
+            <div className="metric-icon" style={{ background: m.bg, color: m.cl }}>
+              <m.Icon size={18} strokeWidth={2.2} aria-hidden />
+            </div>
             <div className="metric-label">{m.label}</div>
             <div className="metric-value">{m.value}</div>
           </div>
